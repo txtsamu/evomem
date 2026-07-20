@@ -35,8 +35,8 @@ fn main() -> anyhow::Result<()> {
                 })?;
                 println!("captured -> {} ({})", resp.slug, resp.path);
             }
-            Command::Search { query, mode, limit } => {
-                let resp = client.search(query, *mode, *limit)?;
+            Command::Search { query, mode, limit, min_score } => {
+                let resp = client.search(query, *mode, *limit, Some(*min_score))?;
                 emit(cli.json, &resp, render_search)?;
             }
             Command::Think { query, mode } => {
@@ -96,9 +96,9 @@ fn main() -> anyhow::Result<()> {
             )?;
             println!("captured -> {} ({})", resp.slug, resp.path);
         }
-        Command::Search { query, mode, limit } => {
+        Command::Search { query, mode, limit, min_score } => {
             let store = open(knowledge_root, &embedder)?;
-            let mut resp = search::search(&store, &embedder, query, *mode)?;
+            let mut resp = search::search(&store, &embedder, query, *mode, *min_score)?;
             if let Some(l) = limit {
                 resp.hits.truncate(*l);
             }

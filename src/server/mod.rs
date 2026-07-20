@@ -150,6 +150,7 @@ struct SearchParams {
     q: String,
     mode: Option<String>,
     limit: Option<usize>,
+    min_score: Option<f32>,
 }
 
 async fn api_search(
@@ -157,10 +158,11 @@ async fn api_search(
     Query(p): Query<SearchParams>,
 ) -> std::result::Result<Json<serde_json::Value>, AppErr> {
     let mode = parse_mode(p.mode.as_deref());
-    let key = cache_key(&("search", format!("{mode:?}"), &p.q, p.limit));
+    let min_score = p.min_score.unwrap_or(0.0);
+    let key = cache_key(&("search", format!("{mode:?}"), &p.q, p.limit, min_score));
     cached_json(state, key, move |app| {
         let store = lock(&app.store);
-        let mut resp = search::search(&store, app.embedder.as_ref(), &p.q, mode)?;
+        let mut resp = search::search(&store, app.embedder.as_ref(), &p.q, mode, min_score)?;
         if let Some(limit) = p.limit {
             resp.hits.truncate(limit);
         }

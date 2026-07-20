@@ -106,6 +106,7 @@ fn sync_is_idempotent_and_detects_deletes() {
         &f.embedder,
         "demo day closing panel",
         Mode::Balanced,
+        0.0,
     )
     .unwrap();
     assert!(resp.hits.iter().all(|h| h.slug != "events/demo-day"));
@@ -114,7 +115,7 @@ fn sync_is_idempotent_and_detects_deletes() {
 #[test]
 fn search_finds_entities_with_evidence_and_excludes_test_dir() {
     let f = setup();
-    let resp = search::search(&f.store, &f.embedder, "Acme Corp", Mode::Balanced).unwrap();
+    let resp = search::search(&f.store, &f.embedder, "Acme Corp", Mode::Balanced, 0.0).unwrap();
     assert_eq!(resp.intent, Intent::Entity);
     assert!(!resp.hits.is_empty());
     assert_eq!(resp.hits[0].slug, "companies/acme-corp");
@@ -134,7 +135,7 @@ fn search_finds_entities_with_evidence_and_excludes_test_dir() {
 #[test]
 fn alias_hop_resolves_to_canonical_page() {
     let f = setup();
-    let resp = search::search(&f.store, &f.embedder, "Acme", Mode::Balanced).unwrap();
+    let resp = search::search(&f.store, &f.embedder, "Acme", Mode::Balanced, 0.0).unwrap();
     assert_eq!(resp.hits[0].slug, "companies/acme-corp");
     assert_eq!(resp.hits[0].evidence, Evidence::AliasHit);
 }
@@ -143,13 +144,13 @@ fn alias_hop_resolves_to_canonical_page() {
 fn typo_and_stem_queries_still_hit() {
     let f = setup();
     // typo: "retreival" -> "retrieval"
-    let resp = search::search(&f.store, &f.embedder, "retreival quality", Mode::Balanced).unwrap();
+    let resp = search::search(&f.store, &f.embedder, "retreival quality", Mode::Balanced, 0.0).unwrap();
     assert!(
         resp.hits.iter().any(|h| h.slug == "concepts/retrieval"),
         "typo query missed"
     );
     // stem: "prototyped" ~ "prototypes"
-    let resp = search::search(&f.store, &f.embedder, "prototyped tooling", Mode::Balanced).unwrap();
+    let resp = search::search(&f.store, &f.embedder, "prototyped tooling", Mode::Balanced, 0.0).unwrap();
     assert!(
         resp.hits.iter().any(|h| h.slug == "companies/beta-labs"),
         "stem query missed"
@@ -234,6 +235,7 @@ fn graph_augmentation_pulls_connected_pages() {
         &f.embedder,
         "who works at Acme Corp",
         Mode::Tokenmax,
+        0.0,
     )
     .unwrap();
     let slugs: Vec<&str> = resp.hits.iter().map(|h| h.slug.as_str()).collect();
@@ -315,6 +317,7 @@ fn capture_is_immediately_searchable() {
         &f.embedder,
         "quantized hologram caching",
         Mode::Balanced,
+        0.0,
     )
     .unwrap();
     assert_eq!(found.hits[0].slug, resp.slug);
@@ -361,7 +364,7 @@ fn frontmatter_only_page_is_searchable_by_title() {
         "---\ntitle: Dana Stubfield\ntype: person\n---\n",
     );
     ingest::sync_dir(&f.store, &f.embedder).unwrap();
-    let resp = search::search(&f.store, &f.embedder, "Dana Stubfield", Mode::Balanced).unwrap();
+    let resp = search::search(&f.store, &f.embedder, "Dana Stubfield", Mode::Balanced, 0.0).unwrap();
     assert_eq!(resp.hits[0].slug, "people/dana-stub", "{:?}", resp.hits);
 }
 
@@ -495,6 +498,7 @@ fn temporal_intent_lets_chat_pages_surface() {
         &f.embedder,
         "pricing discussed last week",
         Mode::Balanced,
+        0.0,
     )
     .unwrap();
     assert_eq!(resp.intent, Intent::Temporal);

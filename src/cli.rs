@@ -53,6 +53,9 @@ pub enum Command {
         /// Cap the number of results
         #[arg(long)]
         limit: Option<usize>,
+        /// Exclude results below this relevance score
+        #[arg(long, default_value_t = 0.03)]
+        min_score: f32,
     },
     /// Knowledge synthesis: composed facts with citations + gap analysis
     Think {

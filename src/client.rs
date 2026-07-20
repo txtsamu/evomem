@@ -68,13 +68,22 @@ impl RemoteClient {
             .map_err(|e| EvoError::Server(format!("bad response from {url}: {e}")))
     }
 
-    pub fn search(&self, q: &str, mode: Mode, limit: Option<usize>) -> Result<SearchResponse> {
+    pub fn search(
+        &self,
+        q: &str,
+        mode: Mode,
+        limit: Option<usize>,
+        min_score: Option<f32>,
+    ) -> Result<SearchResponse> {
         let mut params = vec![
             ("q", q.to_string()),
             ("mode", format!("{mode:?}").to_lowercase()),
         ];
         if let Some(l) = limit {
             params.push(("limit", l.to_string()));
+        }
+        if let Some(score) = min_score {
+            params.push(("min_score", score.to_string()));
         }
         self.get("/api/search", &params)
     }

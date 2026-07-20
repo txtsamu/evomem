@@ -36,6 +36,7 @@ pub fn search(
     embedder: &dyn Embedder,
     query: &str,
     mode: Mode,
+    min_score: f32,
 ) -> Result<SearchResponse> {
     let intent = classify_intent(store, query);
     let k = knobs(mode, intent);
@@ -182,12 +183,15 @@ pub fn search(
     let mut seen_slugs = std::collections::HashSet::new();
     hits.retain(|(c, _)| seen_slugs.insert(c.doc.slug.clone()));
 
-    // Token budget + result cap.
+    // Minimum score filter, token budget + result cap.
     let mut out = Vec::new();
     let mut budget = k.token_budget;
-    for (i, (c, evidence)) in hits.into_iter().enumerate() {
+    for (c, evidence) in hits.into_iter() {
         if out.len() >= k.max_results {
             break;
+        }
+        if c.score < min_score {
+            continue;
         }
         let snippet = snippet_of(&c.chunk.text);
         let cost = config::estimate_tokens(&snippet);
@@ -196,7 +200,7 @@ pub fn search(
         }
         budget = budget.saturating_sub(cost);
         out.push(SearchHit {
-            rank: i + 1,
+            rank: out.len() + 1,
             slug: c.doc.slug,
             title: c.doc.title,
             heading_path: c.chunk.heading_path,

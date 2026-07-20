@@ -20,7 +20,7 @@ pub fn think(
     mode: Mode,
     now: DateTime<Utc>,
 ) -> Result<ThinkResponse> {
-    let response = search::search(store, embedder, query, mode)?;
+    let response = search::search(store, embedder, query, mode, 0.0)?;
 
     let mut facts = Vec::new();
     let mut doc_ids = Vec::new();
