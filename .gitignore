@@ -72,3 +72,6 @@ __pycache__/
 *.sqlite3
 *.db
 
+# Claude Code hook session data (integrations/claude-code)
+integrations/claude-code/data/
+

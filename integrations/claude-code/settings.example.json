@@ -1,0 +1,47 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 /path/to/integrations/claude-code/hook.py session-start" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 /path/to/integrations/claude-code/hook.py prompt-submit" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 /path/to/integrations/claude-code/hook.py post-tool-use" }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 /path/to/integrations/claude-code/hook.py post-tool-failure" }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 /path/to/integrations/claude-code/hook.py session-end" }
+        ]
+      }
+    ]
+  },
+  "mcpServers": {
+    "evomem": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["/path/to/integrations/mcp/mcp_server.py"],
+      "env": { "EVOMEM_URL": "http://localhost:7700" }
+    }
+  }
+}

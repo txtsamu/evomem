@@ -211,6 +211,18 @@ make build-darwin-x64 # x86_64-apple-darwin
 make dist
 ```
 
+## Integrations
+
+Optional adapters for AI agents live in [`integrations/`](integrations/):
+
+- **MCP server** — expose evomem search/think/capture/graph/stats/sync/doc to
+  any MCP-capable agent (Claude Code, Cursor, Hermes, ...)
+- **Claude Code hooks** — record Claude Code sessions, prompts, and tool
+  results into the knowledge base so the agent's past work becomes searchable
+
+Both are pure Python and require only the REST server (`evomem serve`) — the
+Rust core stays dependency-free. See [`integrations/README.md`](integrations/README.md).
+
 ## License
 
 MIT
