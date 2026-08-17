@@ -1,0 +1,10 @@
+---
+name: evomem
+version: 0.1.0
+description: "Real-time capture of Hermes sessions into the evomem knowledge base (JSONL + immediate sync)."
+author: "txtsamu"
+homepage: "https://github.com/anvie/evomem"
+hooks:
+  - on_session_end
+  - on_pre_compress
+  - on_memory_write

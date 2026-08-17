@@ -8,6 +8,7 @@ and live outside the crate.
 | ------------- | ------------------------------------------------------------------------- |
 | `mcp/`        | MCP server exposing evomem search/think/capture/graph/stats/sync/doc to any MCP-capable agent |
 | `claude-code/`| Claude Code hooks that record every session/prompt/tool event into the knowledge base |
+| `hermes/`     | Hermes Agent memory-provider plugin (realtime capture) + backfill script for historical sessions |
 
 ## MCP server
 
@@ -101,3 +102,60 @@ python3 ~/evomem-bridge/hooks/sync_to_evomem.py
 | `EVOMEM_URL`     | `http://localhost:7700` | MCP server, sync script |
 | `EVOMEM_KB`      | `../../evomem-kb` relative to script | sync script |
 | `EVOMEM_DATA_DIR`| `./data` next to hook.py | hook, sync script |
+
+## Hermes integration
+
+Records Hermes Agent sessions into evomem — both in realtime (memory-provider
+plugin) and historically (backfill script), so the agent's past work becomes
+searchable knowledge.
+
+### Realtime capture (plugin)
+
+Hermes memory providers get lifecycle hooks (`session_start`, per-turn
+conversation, context-compression summary, memory writes, session end). The
+plugin in `hermes/hermes_plugin/` writes JSONL events into
+`<bridge>/data/sessions-hermes/<session_id>.jsonl` — the exact same format the
+Claude Code hooks use — and spawns `sync_to_evomem.py` at session end /
+pre-compress, so data reaches the evomem index within seconds. It never
+injects context and exposes no tools; it only *captures*.
+
+```bash
+# 1. Install the plugin
+cp -r hermes/hermes_plugin ~/.hermes/plugins/evomem
+
+# 2. Enable it in config.yaml
+#    memory.provider: evomem   (the built-in provider stays active alongside)
+#    plugins.enabled: [..., evomem]
+
+# 3. Point it at your deployed bridge (contains sync_to_evomem.py + data/)
+#    export EVOMEM_BRIDGE_DIR=/path/to/your/evomem-bridge/hooks
+
+# 4. Restart the Hermes gateway (memory providers load at agent init)
+```
+
+### Historical backfill
+
+Hermes stores session transcripts in `~/.hermes/state.db` (`sessions` +
+`messages` tables) with a few older ones only as JSONL files in
+`~/.hermes/sessions/`. `hermes/backfill_hermes_sessions.py` walks every
+session (excluding `claude_code` imports, which the Claude Code hooks already
+own), renders each as a markdown note in `evomem-kb/sessions/` and triggers
+`evomem sync`. Idempotent — sessions already captured (realtime or a previous
+run) are skipped.
+
+```bash
+python3 hermes/backfill_hermes_sessions.py              # backfill + sync
+python3 hermes/backfill_hermes_sessions.py --dry-run    # preview counts only
+```
+
+Environment variables:
+
+| Variable             | Default                    | Used by          |
+| -------------------- | -------------------------- | ---------------- |
+| `EVOMEM_URL`         | `http://localhost:7700`    | plugin, backfill |
+| `EVOMEM_BRIDGE_DIR`  | `<repo>/integrations/claude-code` | plugin |
+| `HERMES_DB`          | `~/.hermes/state.db`       | backfill         |
+| `HERMES_SESSIONS_DIR`| `~/.hermes/sessions`       | backfill         |
+| `REALTIME_JSONL_DIR` | `<script>/data/sessions-hermes` | backfill    |
+| `EVOMEM_KB`          | `../../evomem-kb` relative to script | backfill |
+| `USER_MAX` / `ASSISTANT_MAX` | `500` / `2000`      | backfill         |

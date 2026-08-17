@@ -219,6 +219,9 @@ Optional adapters for AI agents live in [`integrations/`](integrations/):
   any MCP-capable agent (Claude Code, Cursor, Hermes, ...)
 - **Claude Code hooks** — record Claude Code sessions, prompts, and tool
   results into the knowledge base so the agent's past work becomes searchable
+- **Hermes integration** — realtime session capture via a Hermes memory-provider
+  plugin, plus a backfill script that imports all historical Hermes sessions
+  from `~/.hermes/state.db`
 
 Both are pure Python and require only the REST server (`evomem serve`) — the
 Rust core stays dependency-free. See [`integrations/README.md`](integrations/README.md).
