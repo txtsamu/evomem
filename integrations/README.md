@@ -137,15 +137,25 @@ cp -r hermes/hermes_plugin ~/.hermes/plugins/evomem
 
 Hermes stores session transcripts in `~/.hermes/state.db` (`sessions` +
 `messages` tables) with a few older ones only as JSONL files in
-`~/.hermes/sessions/`. `hermes/backfill_hermes_sessions.py` walks every
-session (excluding `claude_code` imports, which the Claude Code hooks already
-own), renders each as a markdown note in `evomem-kb/sessions/` and triggers
-`evomem sync`. Idempotent — sessions already captured (realtime or a previous
-run) are skipped.
+`~/.hermes/sessions/`. The backfill script has two modes:
+
+**Hermes mode (default)** — walks every Hermes session (excluding
+`claude_code` imports, which the Claude mode owns), renders each as a
+markdown note in `evomem-kb/sessions/` and triggers `evomem sync`.
+Idempotent — sessions already captured (realtime or a previous run) are
+skipped.
+
+**Claude Code mode (`--claude-dir` + `--host`)** — parses native Claude Code
+transcripts (`~/.claude/projects/<cwd>/<session-id>.jsonl`, same parser the
+Hermes session importer uses) and renders each as a markdown note in
+`evomem-kb/claude/` with a host label, matching the format the Claude Code
+hooks produce. Pass it once per host:
 
 ```bash
-python3 hermes/backfill_hermes_sessions.py              # backfill + sync
-python3 hermes/backfill_hermes_sessions.py --dry-run    # preview counts only
+python3 hermes/backfill_hermes_sessions.py                                    # Hermes sessions + sync
+python3 hermes/backfill_hermes_sessions.py --claude-dir ~/.claude/projects --host homelab
+python3 hermes/backfill_hermes_sessions.py --claude-dir /tmp/fedora-projects --host fedora
+python3 hermes/backfill_hermes_sessions.py --dry-run                          # preview counts only
 ```
 
 Environment variables:
@@ -156,6 +166,6 @@ Environment variables:
 | `EVOMEM_BRIDGE_DIR`  | `<repo>/integrations/claude-code` | plugin |
 | `HERMES_DB`          | `~/.hermes/state.db`       | backfill         |
 | `HERMES_SESSIONS_DIR`| `~/.hermes/sessions`       | backfill         |
-| `REALTIME_JSONL_DIR` | `<script>/data/sessions-hermes` | backfill    |
+| `REALTIME_JSONL_DIR` | `<script>/data/sessions-hermes` | backfill (Hermes mode) |
 | `EVOMEM_KB`          | `../../evomem-kb` relative to script | backfill |
-| `USER_MAX` / `ASSISTANT_MAX` | `500` / `2000`      | backfill         |
+| `USER_MAX` / `ASSISTANT_MAX` | `500` / `2000`      | backfill (Hermes mode) |
