@@ -32,6 +32,7 @@ impl Store {
         embeddings: &[Vec<f32>],
     ) -> Result<()> {
         self.delete_chunks_for_page(doc_id)?;
+        self.invalidate_vocab();
         let mut insert_word = self.conn.prepare_cached(
             "INSERT OR IGNORE INTO word_index (word, chunk_id, attr, pos) VALUES (?1, ?2, ?3, ?4)",
         )?;

@@ -26,6 +26,7 @@ use std::collections::HashMap;
 
 use crate::config::SourceTiers;
 use crate::error::Result;
+use crate::store::words::VocabWord;
 use crate::store::Store;
 use crate::text::{allowed_typos, bounded_levenshtein, stem, tokenize};
 
@@ -90,12 +91,13 @@ pub fn search(store: &Store, query: &str, top_k: usize) -> Result<Vec<LexicalHit
         let q_stem = stem(qw);
         let mut derivs = Vec::new();
         let mut count: i64 = 0;
-        for vw in &vocab {
-            let Some(m) = resolve_word(qw, &q_stem, vw, is_last) else {
+        let q_len = qw.chars().count();
+        for vw in vocab.iter() {
+            let Some(m) = resolve_word(qw, q_len, &q_stem, vw, is_last) else {
                 continue;
             };
-            count += store.word_chunk_count(vw, &SourceTiers::HARD_EXCLUDE)?;
-            derivs.push((vw.clone(), m));
+            count += store.word_chunk_count(&vw.word, &SourceTiers::HARD_EXCLUDE)?;
+            derivs.push((vw.word.clone(), m));
         }
         derivations.push(derivs);
         df.push((count as f32).min(total_chunks));
@@ -169,20 +171,26 @@ pub fn search(store: &Store, query: &str, top_k: usize) -> Result<Vec<LexicalHit
 }
 
 /// Does query word `qw` match vocabulary word `vw`, and at what cost?
-fn resolve_word(qw: &str, q_stem: &str, vw: &str, allow_prefix: bool) -> Option<WordMatch> {
-    if qw == vw {
+fn resolve_word(
+    qw: &str,
+    q_len: usize,
+    q_stem: &str,
+    vw: &VocabWord,
+    allow_prefix: bool,
+) -> Option<WordMatch> {
+    if qw == vw.word {
         return Some(WordMatch {
             cost: COST_EXACT,
             exact: true,
         });
     }
-    if allow_prefix && qw.chars().count() >= MIN_PREFIX_LEN && vw.starts_with(qw) {
+    if allow_prefix && q_len >= MIN_PREFIX_LEN && vw.word.starts_with(qw) {
         return Some(WordMatch {
             cost: COST_EXACT,
             exact: false,
         });
     }
-    if q_stem == stem(vw) {
+    if q_stem == vw.stem {
         return Some(WordMatch {
             cost: COST_STEM,
             exact: false,
@@ -192,7 +200,12 @@ fn resolve_word(qw: &str, q_stem: &str, vw: &str, allow_prefix: bool) -> Option<
     if budget == 0 {
         return None;
     }
-    let d = bounded_levenshtein(qw, vw, budget)?;
+    // Cheap reject before the Levenshtein DP allocates: the length gap alone
+    // already exceeds the typo budget for almost every vocabulary word.
+    if q_len.abs_diff(vw.word.chars().count()) as u32 > budget {
+        return None;
+    }
+    let d = bounded_levenshtein(qw, &vw.word, budget)?;
     if d == 0 {
         return None; // equal strings already handled
     }

@@ -4,7 +4,9 @@ pub mod docs;
 pub mod schema;
 pub mod words;
 
+use std::cell::RefCell;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use rusqlite::Connection;
 
@@ -14,6 +16,10 @@ use crate::error::{EvoError, Result};
 pub struct Store {
     pub(crate) conn: Connection,
     pub brain_root: PathBuf,
+    /// Cached lexical vocabulary (see `words.rs`). Rebuilt lazily after any
+    /// chunk write; building it scans the whole inverted index, which is far
+    /// too slow to repeat on every search.
+    pub(crate) vocab_cache: RefCell<Option<Arc<Vec<words::VocabWord>>>>,
 }
 
 impl Store {
@@ -25,6 +31,7 @@ impl Store {
         let store = Store {
             conn,
             brain_root: brain_root.to_path_buf(),
+            vocab_cache: RefCell::new(None),
         };
         store.set_meta("brain_root", &brain_root.to_string_lossy())?;
         store.set_meta("embedder_id", embedder_id)?;
@@ -44,6 +51,7 @@ impl Store {
         let store = Store {
             conn,
             brain_root: brain_root.to_path_buf(),
+            vocab_cache: RefCell::new(None),
         };
         if let Some(stored) = store.get_meta("embedder_id")? {
             if stored != embedder_id {
@@ -148,12 +156,10 @@ mod tests {
             .unwrap();
 
         let vocab = store.vocabulary().unwrap();
-        assert!(vocab.contains(&"alice".to_string()));
-        assert!(vocab.contains(&"retrieval".to_string()));
-        assert!(
-            vocab.contains(&"career".to_string()),
-            "heading words indexed"
-        );
+        let has = |w: &str| vocab.iter().any(|v| v.word == w);
+        assert!(has("alice"));
+        assert!(has("retrieval"));
+        assert!(has("career"), "heading words indexed");
 
         let postings = store.postings("alice", &[]).unwrap();
         // "alice" appears in title (attr 0) and body (attr 2).
