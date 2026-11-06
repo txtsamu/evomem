@@ -2,6 +2,8 @@
 //! an in-memory LRU query cache for read endpoints (search/think/graph),
 //! invalidated on every write (capture/sync).
 
+mod utcp;
+
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
 
@@ -39,6 +41,8 @@ pub fn serve(store: Store, embedder: Box<dyn Embedder>, host: &str, port: u16) -
 
     let app = Router::new()
         .route("/health", get(health))
+        .route("/utcp", get(utcp::handler))
+        .route("/.well-known/utcp", get(utcp::handler))
         .route("/api/search", get(api_search))
         .route("/api/think", get(api_think))
         .route("/api/graph", get(api_graph))
@@ -147,6 +151,8 @@ fn cache_key<T: serde::Serialize>(parts: &T) -> String {
 
 #[derive(Deserialize)]
 struct SearchParams {
+    // `query` is accepted too: MCP-era clients and LLMs use both spellings.
+    #[serde(alias = "query")]
     q: String,
     mode: Option<String>,
     limit: Option<usize>,
@@ -193,6 +199,7 @@ async fn api_think(
 
 #[derive(Deserialize)]
 struct GraphParams {
+    #[serde(alias = "slug")]
     start: String,
     edge: Option<String>,
     hops: Option<usize>,
@@ -305,6 +312,15 @@ mod tests {
             cache_key(&("search", "balanced", "q")),
             cache_key(&("think", "balanced", "q"))
         );
+    }
+
+    #[test]
+    fn search_params_accept_query_alias() {
+        let a: SearchParams = serde_json::from_value(serde_json::json!({"q": "x"})).unwrap();
+        let b: SearchParams = serde_json::from_value(serde_json::json!({"query": "x"})).unwrap();
+        assert_eq!(a.q, b.q);
+        let g: GraphParams = serde_json::from_value(serde_json::json!({"slug": "s"})).unwrap();
+        assert_eq!(g.start, "s");
     }
 
     #[test]

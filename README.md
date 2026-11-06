@@ -154,6 +154,34 @@ Then use `--server` from another machine:
 evomem --server http://host:7700 search "query"
 ```
 
+### UTCP (Universal Tool Calling Protocol)
+
+The server describes its own API as a [UTCP](https://utcp.io) manual, so UTCP
+clients can discover the tools and call the REST endpoints directly, with no
+MCP server in between:
+
+```bash
+curl http://127.0.0.1:7700/utcp          # also at /.well-known/utcp
+```
+
+```python
+from utcp.utcp_client import UtcpClient  # pip install utcp utcp-http utcp-file
+c = await UtcpClient.create(config={"manual_call_templates": [{
+    "name": "evomem", "call_template_type": "http",
+    "url": "http://127.0.0.1:7700/utcp", "http_method": "GET",
+    "allowed_communication_protocols": ["http"]}]})
+await c.call_tool("evomem.search", {"q": "iscsi timeout", "limit": 5})
+```
+
+Tools: `search`, `think`, `capture`, `graph`, `stats`, `doc`, `sync`.
+The URLs in the manual come from `EVOMEM_PUBLIC_URL` if set, otherwise from the
+request's `X-Forwarded-Proto` and `Host` headers. The reference UTCP http client
+only allows plain HTTP to loopback, so for a LAN deployment put the server
+behind TLS and set `EVOMEM_PUBLIC_URL=https://...`.
+
+`/api/search` and `/api/think` also accept `query` as an alias for `q`, and
+`/api/graph` accepts `slug` for `start`.
+
 ## Architecture
 
 ### Retrieval pipeline
